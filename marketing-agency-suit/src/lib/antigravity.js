@@ -53,43 +53,78 @@ async function fetchFal(endpoint, bodyData) {
 }
 
 export const antigravity = {
-  // IMAGE: Fal.ai Flux/Stable Diffusion
+  // IMAGE: Fal.ai Flux - Final Boss Multi-Option Pipeline
   async generateImage(params) {
-    // Determine prompt based on style
-    let enhancedPrompt = `A high quality, professional product photography shot of a ${params.product_name}. `;
-    if (params.style === "studio") enhancedPrompt += `Studio lighting, solid clean background, 8k resolution, photorealistic. `;
-    if (params.style === "lifestyle" || params.style === "ugc") enhancedPrompt += `Lifestyle setting, natural sunlight, held by a model or placed in a real-world environment. `;
-    if (params.style === "ad") enhancedPrompt += `Dramatic vibrant lighting, suitable for a marketing ad banner, negative space for text. `;
-    if (params.prompt) enhancedPrompt += `Additional context: ${params.prompt}`;
+    // Build a rich, detailed prompt based on the selected visual style
+    const stylePrompts = {
+      studio: "Ultra-clean minimalist studio product photography. White or light gray seamless background. Professional three-point lighting with key light creating defined highlights. Subtle gradient reflection on surface. Shot in 8K, photorealistic, commercial quality.",
+      lifestyle: "Lifestyle product photography in a natural, aspirational real-world setting. Warm golden-hour lighting. Product placed naturally on a textured surface (wood, linen, stone). Shallow depth of field with beautiful bokeh background.",
+      "3d_render": "Hyper-realistic 3D product render. Floating product with soft ambient occlusion shadows. Glossy reflective surface. Dramatic rim lighting with subtle color gradients in the background. Cinema 4D / Octane quality.",
+      luxury: "Luxury high-end product photography. Marble or dark velvet surface. Gold and champagne accent lighting. Crystal-clear reflections. Magazine editorial quality. Vogue / Harper's Bazaar aesthetic.",
+      outdoor: "Product placed in a stunning outdoor setting. Natural scenery - tropical beach, mountain vista, or lush garden. Golden sunlight with natural shadows. Product is the hero with nature as the backdrop.",
+      neon: "Cyberpunk-inspired product photography with vibrant neon lighting in pink, blue, and purple. Dark moody background with glowing reflections. Futuristic tech aesthetic. Blade Runner vibes.",
+    };
 
-    const falResult = await fetchFal("fal-ai/flux/schnell", {
+    const basePrompt = stylePrompts[params.style] || stylePrompts.studio;
+    let enhancedPrompt = `Professional e-commerce product image. ${basePrompt}`;
+    if (params.additional_context) {
+      enhancedPrompt += ` Additional creative direction: ${params.additional_context}.`;
+    }
+    enhancedPrompt += ` The product must be the central hero of the image, perfectly lit and in sharp focus. Ultra high resolution, 8K.`;
+
+    // If the user uploaded a base64 image, use image_url for image-to-image
+    const payload = {
       prompt: enhancedPrompt,
-      image_size: "square_hd",
-      num_images: 1,
-      enable_safety_checker: true
-    });
+      image_size: params.aspect_ratio || "square_hd",
+      num_images: params.num_images || 1,
+      enable_safety_checker: true,
+    };
+
+    // If user provided a product photo, attach it as the image reference
+    if (params.imageBase64) {
+      payload.image_url = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
+    }
+
+    const falResult = await fetchFal("fal-ai/flux/schnell", payload);
 
     return {
       success: true,
       url: falResult.images[0].url,
-      variants: falResult.images.map(img => img.url)
+      variants: falResult.images.map(img => img.url),
     };
   },
 
-  // VIDEO: Fal.ai Luma or Kling
+  // VIDEO: Fal.ai Kling Pro - Image-to-Video Pipeline
   async generateVideo(params) {
-    const prompt = `A highly engaging cinematic promotional video featuring this product: ${params.product_name}. ${params.text_prompt}. Video style: ${params.style}. Smooth, stable camera movement.`;
-    
-    // Using fal-ai Kling video endpoint as an example of a fast text-to-video for products
-    const falResult = await fetchFal("fal-ai/kling-video/v1/standard/text-to-video", {
-      prompt: prompt,
-      aspect_ratio: "16:9",
-      duration: "5"
-    });
+    // Build cinematic prompt based on selected video style
+    const stylePrompts = {
+      cinematic: "Dramatic cinematic product reveal. Camera slowly orbits 360 degrees around the product. Dramatic studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field with beautiful bokeh. Film grain. Professional commercial quality.",
+      ugc: "Authentic UGC-style product video. Slightly handheld camera movement. Natural daylight. Product is picked up, examined, and shown from multiple angles. Warm, relatable feel. TikTok native aesthetic.",
+      social_ad: "High-energy social media advertisement. Quick dynamic camera movements. Bold dramatic lighting with color shifts. Product hero shot with particle effects. Fast zoom transitions. Attention-grabbing commercial.",
+      lifestyle: "Dreamy aspirational lifestyle video. Slow motion footage. Product in a beautiful real-world setting. Golden hour sunlight. Gentle breeze causing subtle movement. Cinematic depth of field. Premium brand aesthetic.",
+      product_demo: "Detailed product close-up showcase. Macro camera slowly revealing product details and textures. Smooth controlled camera path. Clean neutral background with professional lighting. Feature-focused demonstration.",
+    };
+
+    const basePrompt = stylePrompts[params.style] || stylePrompts.cinematic;
+    let enhancedPrompt = `${basePrompt}`;
+    if (params.creative_prompt) {
+      enhancedPrompt += ` Additional creative direction: ${params.creative_prompt}.`;
+    }
+    enhancedPrompt += ` Smooth, stable, professional camera movement. High production value. 4K cinematic quality.`;
+
+    // Build payload for Kling Pro image-to-video
+    const payload = {
+      prompt: enhancedPrompt,
+      image_url: `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`,
+      duration: params.duration || "5",
+      aspect_ratio: params.aspect_ratio || "9:16",
+    };
+
+    const falResult = await fetchFal("fal-ai/kling-video/v1/pro/image-to-video", payload);
 
     return {
       success: true,
-      url: falResult.video.url || falResult.video_url
+      url: falResult.video?.url || falResult.video_url,
     };
   },
 
