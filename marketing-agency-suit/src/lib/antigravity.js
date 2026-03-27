@@ -52,6 +52,88 @@ async function fetchFal(endpoint, bodyData) {
   return await res.json();
 }
 
+// Upload base64 image to Fal storage and get a hosted URL
+async function uploadToFalStorage(base64Data, mimeType) {
+  const apiKey = process.env.FAL_KEY;
+  if (!apiKey) throw new Error("FAL_KEY is missing");
+
+  // Convert base64 to binary buffer
+  const binaryData = Buffer.from(base64Data, "base64");
+  const ext = mimeType?.includes("png") ? "png" : "jpg";
+
+  const res = await fetch("https://fal.run/fal-ai/any/upload", {
+    method: "PUT",
+    headers: {
+      "Authorization": `Key ${apiKey.replace(/\"/g, "").trim()}`,
+      "Content-Type": mimeType || "image/jpeg",
+    },
+    body: binaryData,
+  });
+
+  if (!res.ok) {
+    // Fallback: return data URI if storage upload fails
+    return `data:${mimeType || "image/jpeg"};base64,${base64Data}`;
+  }
+
+  const result = await res.json();
+  return result.url || result.file_url;
+}
+
+// Queue-based Fal call for long-running tasks (video generation)
+async function fetchFalQueue(endpoint, bodyData) {
+  const apiKey = process.env.FAL_KEY;
+  if (!apiKey) throw new Error("FAL_KEY is missing");
+  const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
+
+  // Submit the job to the queue
+  const submitRes = await fetch(`https://queue.fal.run/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": authHeader,
+    },
+    body: JSON.stringify(bodyData),
+  });
+
+  if (!submitRes.ok) {
+    const err = await submitRes.text();
+    console.error("Fal.ai Queue Submit Error:", err);
+    throw new Error("Failed to submit video generation job");
+  }
+
+  const { request_id } = await submitRes.json();
+
+  // Poll for the result (check every 5 seconds, up to 3 minutes)
+  const maxAttempts = 36;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    const statusRes = await fetch(
+      `https://queue.fal.run/${endpoint}/requests/${request_id}/status`,
+      { headers: { "Authorization": authHeader } }
+    );
+
+    if (!statusRes.ok) continue;
+    const status = await statusRes.json();
+
+    if (status.status === "COMPLETED") {
+      // Fetch the actual result
+      const resultRes = await fetch(
+        `https://queue.fal.run/${endpoint}/requests/${request_id}`,
+        { headers: { "Authorization": authHeader } }
+      );
+      if (!resultRes.ok) throw new Error("Failed to fetch video result");
+      return await resultRes.json();
+    }
+
+    if (status.status === "FAILED") {
+      throw new Error("Video generation failed on the AI server");
+    }
+  }
+
+  throw new Error("Video generation timed out");
+}
+
 export const antigravity = {
   // IMAGE: Fal.ai Bria Product Shot - TRUE Image-to-Image Product Photography
   async generateImage(params) {
@@ -98,7 +180,7 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Fal.ai Kling Pro - Image-to-Video Pipeline
+  // VIDEO: Fal.ai Kling Pro - Image-to-Video Pipeline (Queue-based)
   async generateVideo(params) {
     // Build cinematic prompt based on selected video style
     const stylePrompts = {
@@ -116,15 +198,24 @@ export const antigravity = {
     }
     enhancedPrompt += ` Smooth, stable, professional camera movement. High production value. 4K cinematic quality.`;
 
-    // Build payload for Kling Pro image-to-video
+    // Step 1: Upload image to Fal storage to get a proper hosted URL
+    let imageUrl;
+    try {
+      imageUrl = await uploadToFalStorage(params.imageBase64, params.imageMimeType);
+    } catch (e) {
+      // Fallback to data URI if storage upload fails
+      imageUrl = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
+    }
+
+    // Step 2: Submit to Kling Pro via queue for reliable long-running generation
     const payload = {
       prompt: enhancedPrompt,
-      image_url: `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`,
+      image_url: imageUrl,
       duration: params.duration || "5",
       aspect_ratio: params.aspect_ratio || "9:16",
     };
 
-    const falResult = await fetchFal("fal-ai/kling-video/v1/pro/image-to-video", payload);
+    const falResult = await fetchFalQueue("fal-ai/kling-video/v1/standard/image-to-video", payload);
 
     return {
       success: true,
