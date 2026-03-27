@@ -29,7 +29,13 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, data: record });
   } catch (error) {
-    console.error("Video gen error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Failed to generate video" }, { status: 500 });
+    console.error("Video gen error:", error.message);
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to generate video" },
+      { status: 500 }
+    );
   }
 }
+
+// Increase the max duration for this serverless function (Vercel Pro allows up to 300s)
+export const maxDuration = 300;
