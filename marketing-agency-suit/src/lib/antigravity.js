@@ -53,44 +53,48 @@ async function fetchFal(endpoint, bodyData) {
 }
 
 export const antigravity = {
-  // IMAGE: Fal.ai Flux - Final Boss Multi-Option Pipeline
+  // IMAGE: Fal.ai Bria Product Shot - TRUE Image-to-Image Product Photography
   async generateImage(params) {
-    // Build a rich, detailed prompt based on the selected visual style
-    const stylePrompts = {
-      studio: "Ultra-clean minimalist studio product photography. White or light gray seamless background. Professional three-point lighting with key light creating defined highlights. Subtle gradient reflection on surface. Shot in 8K, photorealistic, commercial quality.",
-      lifestyle: "Lifestyle product photography in a natural, aspirational real-world setting. Warm golden-hour lighting. Product placed naturally on a textured surface (wood, linen, stone). Shallow depth of field with beautiful bokeh background.",
-      "3d_render": "Hyper-realistic 3D product render. Floating product with soft ambient occlusion shadows. Glossy reflective surface. Dramatic rim lighting with subtle color gradients in the background. Cinema 4D / Octane quality.",
-      luxury: "Luxury high-end product photography. Marble or dark velvet surface. Gold and champagne accent lighting. Crystal-clear reflections. Magazine editorial quality. Vogue / Harper's Bazaar aesthetic.",
-      outdoor: "Product placed in a stunning outdoor setting. Natural scenery - tropical beach, mountain vista, or lush garden. Golden sunlight with natural shadows. Product is the hero with nature as the backdrop.",
-      neon: "Cyberpunk-inspired product photography with vibrant neon lighting in pink, blue, and purple. Dark moody background with glowing reflections. Futuristic tech aesthetic. Blade Runner vibes.",
+    // Build scene description based on selected visual style
+    const styleScenes = {
+      studio: "Ultra-clean minimalist studio. White seamless background. Professional three-point lighting with soft shadows. Subtle gradient reflection on polished surface. Commercial product photography.",
+      lifestyle: "Natural lifestyle setting. Warm golden-hour sunlight streaming through a window. Product placed on a textured wooden surface with linen fabric. Soft bokeh greenery in background.",
+      "3d_render": "Floating on a glossy black reflective surface. Dramatic rim lighting with purple and blue gradient background. Soft ambient occlusion shadows. High-end 3D render look.",
+      luxury: "Placed on elegant dark marble surface. Gold and champagne accent lighting. Crystal-clear reflections. Rich velvet fabric draped nearby. Magazine editorial luxury aesthetic.",
+      outdoor: "Stunning tropical beach setting. Warm golden sunlight with natural cast shadows. Turquoise ocean in the soft-focus background. Product sitting on a smooth rock near the shore.",
+      neon: "Dark moody setting with vibrant neon lighting in pink, blue, and purple. Glowing reflections on glossy surface. Cyberpunk futuristic tech aesthetic. Dramatic color contrast.",
     };
 
-    const basePrompt = stylePrompts[params.style] || stylePrompts.studio;
-    let enhancedPrompt = `Professional e-commerce product image. ${basePrompt}`;
+    const scenePrompt = styleScenes[params.style] || styleScenes.studio;
+    let fullPrompt = scenePrompt;
     if (params.additional_context) {
-      enhancedPrompt += ` Additional creative direction: ${params.additional_context}.`;
-    }
-    enhancedPrompt += ` The product must be the central hero of the image, perfectly lit and in sharp focus. Ultra high resolution, 8K.`;
-
-    // If the user uploaded a base64 image, use image_url for image-to-image
-    const payload = {
-      prompt: enhancedPrompt,
-      image_size: params.aspect_ratio || "square_hd",
-      num_images: params.num_images || 1,
-      enable_safety_checker: true,
-    };
-
-    // If user provided a product photo, attach it as the image reference
-    if (params.imageBase64) {
-      payload.image_url = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
+      fullPrompt += ` ${params.additional_context}.`;
     }
 
-    const falResult = await fetchFal("fal-ai/flux/schnell", payload);
+    // Generate multiple variations by calling the API multiple times if needed
+    const numImages = params.num_images || 1;
+    const imageUrls = [];
+
+    for (let i = 0; i < numImages; i++) {
+      const payload = {
+        image_url: `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`,
+        scene_description: fullPrompt,
+        optimize_description: true,
+      };
+
+      const falResult = await fetchFal("fal-ai/bria/product-shot", payload);
+      
+      if (falResult.image?.url) {
+        imageUrls.push(falResult.image.url);
+      } else if (falResult.images?.[0]?.url) {
+        imageUrls.push(falResult.images[0].url);
+      }
+    }
 
     return {
       success: true,
-      url: falResult.images[0].url,
-      variants: falResult.images.map(img => img.url),
+      url: imageUrls[0],
+      variants: imageUrls,
     };
   },
 
