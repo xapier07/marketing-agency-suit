@@ -138,6 +138,24 @@ export default function ImageService() {
     }
   };
 
+  const handleDownload = async (url, i) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `product_image_${i + 1}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download image", error);
+      window.open(url, "_blank"); // Fallback to opening in new tab
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
@@ -440,15 +458,12 @@ export default function ImageService() {
                             className="w-full aspect-square object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-4">
-                            <a
-                              href={url}
-                              download
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => handleDownload(url, i)}
                               className="flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
                             >
                               <Download className="w-4 h-4" /> Download
-                            </a>
+                            </button>
                           </div>
                         </div>
                       </motion.div>
