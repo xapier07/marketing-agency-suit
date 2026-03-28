@@ -180,7 +180,7 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Submit job to Fal queue (returns instantly with request_id)
+  // VIDEO: Submit job to Fal queue — using MiniMax (fast + reliable)
   async submitVideo(params) {
     const apiKey = process.env.FAL_KEY;
     if (!apiKey) throw new Error("FAL_KEY is missing");
@@ -188,32 +188,30 @@ export const antigravity = {
 
     // Build cinematic prompt based on selected video style
     const stylePrompts = {
-      cinematic: "Dramatic cinematic product reveal. Camera slowly orbits 360 degrees around the product. Dramatic studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field with beautiful bokeh. Film grain. Professional commercial quality.",
-      ugc: "Authentic UGC-style product video. Slightly handheld camera movement. Natural daylight. Product is picked up, examined, and shown from multiple angles. Warm, relatable feel. TikTok native aesthetic.",
-      social_ad: "High-energy social media advertisement. Quick dynamic camera movements. Bold dramatic lighting with color shifts. Product hero shot with particle effects. Fast zoom transitions. Attention-grabbing commercial.",
-      lifestyle: "Dreamy aspirational lifestyle video. Slow motion footage. Product in a beautiful real-world setting. Golden hour sunlight. Gentle breeze causing subtle movement. Cinematic depth of field. Premium brand aesthetic.",
-      product_demo: "Detailed product close-up showcase. Macro camera slowly revealing product details and textures. Smooth controlled camera path. Clean neutral background with professional lighting. Feature-focused demonstration.",
+      cinematic: "Dramatic cinematic product reveal. Camera slowly orbits around the product. Studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field. Professional commercial quality.",
+      ugc: "Authentic UGC-style product video. Slightly handheld camera movement. Natural daylight. Product examined from multiple angles. Warm relatable feel. TikTok native aesthetic.",
+      social_ad: "High-energy social media advertisement. Dynamic camera movements. Bold dramatic lighting. Product hero shot. Fast zoom transitions. Attention-grabbing commercial.",
+      lifestyle: "Dreamy aspirational lifestyle video. Slow motion footage. Beautiful real-world setting. Golden hour sunlight. Gentle breeze. Cinematic depth of field. Premium brand aesthetic.",
+      product_demo: "Detailed product close-up showcase. Macro camera slowly revealing product details and textures. Smooth controlled camera path. Clean neutral background with professional lighting.",
     };
 
     const basePrompt = stylePrompts[params.style] || stylePrompts.cinematic;
     let enhancedPrompt = `${basePrompt}`;
     if (params.creative_prompt) {
-      enhancedPrompt += ` Additional creative direction: ${params.creative_prompt}.`;
+      enhancedPrompt += ` ${params.creative_prompt}.`;
     }
-    enhancedPrompt += ` Smooth, stable, professional camera movement. High production value. 4K cinematic quality.`;
+    enhancedPrompt += ` Smooth stable camera movement. High production value.`;
 
-    // Build the image URL (data URI for now)
+    // Build the image as data URI
     const imageUrl = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
 
     const payload = {
       prompt: enhancedPrompt,
       image_url: imageUrl,
-      duration: params.duration || "5",
-      aspect_ratio: params.aspect_ratio || "9:16",
     };
 
-    // Submit to the Fal queue (this returns instantly)
-    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
+    // Submit to Fal queue using MiniMax video model
+    const endpoint = "fal-ai/minimax/video-01/image-to-video";
     const submitRes = await fetch(`https://queue.fal.run/${endpoint}`, {
       method: "POST",
       headers: {
@@ -229,8 +227,8 @@ export const antigravity = {
       throw new Error("Failed to submit video job: " + err);
     }
 
-    const { request_id } = await submitRes.json();
-    return { request_id, endpoint };
+    const queueData = await submitRes.json();
+    return { request_id: queueData.request_id };
   },
 
   // VIDEO: Check the status of a submitted video job
@@ -238,7 +236,7 @@ export const antigravity = {
     const apiKey = process.env.FAL_KEY;
     if (!apiKey) throw new Error("FAL_KEY is missing");
     const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
-    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
+    const endpoint = "fal-ai/minimax/video-01/image-to-video";
 
     // Check the queue status
     const statusRes = await fetch(
