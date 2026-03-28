@@ -9,7 +9,9 @@ import {
   PenTool, 
   FileText, 
   List, 
-  Mic 
+  Mic,
+  Share2,
+  Mail
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -61,6 +63,22 @@ const SERVICES = [
     icon: Mic,
     href: "/services/script",
     color: "from-indigo-500 to-blue-400",
+  },
+  {
+    id: "social",
+    title: "Viral Social Campaigns",
+    description: "Generate story-driven LinkedIn threads and aesthetic Instagram captions.",
+    icon: Share2,
+    href: "/services/social",
+    color: "from-pink-500 to-rose-400",
+  },
+  {
+    id: "email",
+    title: "Email Marketing Sequences",
+    description: "Generate high-converting 3-part email drips to monetize your list.",
+    icon: Mail,
+    href: "/services/email",
+    color: "from-emerald-500 to-teal-400",
   },
 ];
 
