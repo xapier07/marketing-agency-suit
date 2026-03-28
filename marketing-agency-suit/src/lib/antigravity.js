@@ -228,8 +228,8 @@ export const antigravity = {
       // Continue with the original uploaded image
     }
 
-    // Step 3: Submit to Kling Pro via queue (highest quality video model)
-    const { request_id } = await fal.queue.submit("fal-ai/kling-video/v1/pro/image-to-video", {
+    // Step 3: Submit to Kling Standard via queue (best quality that actually finishes)
+    const { request_id } = await fal.queue.submit("fal-ai/kling-video/v1/standard/image-to-video", {
       input: {
         prompt: enhancedPrompt,
         image_url: enhancedImageUrl,
@@ -243,7 +243,7 @@ export const antigravity = {
 
   // VIDEO: Check the status of a submitted video job
   async checkVideoStatus(requestId) {
-    const endpoint = "fal-ai/kling-video/v1/pro/image-to-video";
+    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
 
     try {
       const statusResult = await fal.queue.status(endpoint, {
