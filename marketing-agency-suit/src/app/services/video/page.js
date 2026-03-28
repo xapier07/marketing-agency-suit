@@ -129,7 +129,7 @@ export default function VideoService() {
       const requestId = submitJson.request_id;
       let videoUrl = null;
       let attempts = 0;
-      const maxAttempts = 60; // 5 minutes max
+      const maxAttempts = 120; // 10 minutes max
 
       while (!videoUrl && attempts < maxAttempts) {
         await new Promise((r) => setTimeout(r, 5000));
@@ -147,7 +147,7 @@ export default function VideoService() {
       }
 
       if (!videoUrl) {
-        throw new Error("Video generation timed out after 5 minutes");
+        throw new Error("Video generation timed out. Please try again.");
       }
 
       setResult({ output_url: videoUrl });
