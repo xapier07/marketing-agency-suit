@@ -3,6 +3,11 @@
  * Integates with OpenAI (Text) and Fal.ai (Image/Video)
  */
 
+import { fal } from "@fal-ai/client";
+
+// Configure fal client with API key
+fal.config({ credentials: () => process.env.FAL_KEY });
+
 async function fetchOpenAI(messages, model = "gpt-4o") {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is missing");
@@ -180,12 +185,8 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Submit job to Fal queue — using MiniMax (fast + reliable)
+  // VIDEO: Submit job using official Fal SDK (handles upload + queue properly)
   async submitVideo(params) {
-    const apiKey = process.env.FAL_KEY;
-    if (!apiKey) throw new Error("FAL_KEY is missing");
-    const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
-
     // Build cinematic prompt based on selected video style
     const stylePrompts = {
       cinematic: "Dramatic cinematic product reveal. Camera slowly orbits around the product. Studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field. Professional commercial quality.",
@@ -202,73 +203,51 @@ export const antigravity = {
     }
     enhancedPrompt += ` Smooth stable camera movement. High production value.`;
 
-    // Build the image as data URI
-    const imageUrl = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
+    // Step 1: Upload image to Fal CDN (the SDK handles this properly)
+    const imageBuffer = Buffer.from(params.imageBase64, "base64");
+    const imageBlob = new Blob([imageBuffer], { type: params.imageMimeType || "image/png" });
+    const imageFile = new File([imageBlob], "product.png", { type: params.imageMimeType || "image/png" });
+    const uploadedUrl = await fal.storage.upload(imageFile);
 
-    const payload = {
-      prompt: enhancedPrompt,
-      image_url: imageUrl,
-    };
-
-    // Submit to Fal queue using MiniMax video model
-    const endpoint = "fal-ai/minimax/video-01/image-to-video";
-    const submitRes = await fetch(`https://queue.fal.run/${endpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": authHeader,
+    // Step 2: Submit to Fal queue using MiniMax (returns instantly with request_id)
+    const { request_id } = await fal.queue.submit("fal-ai/minimax/video-01/image-to-video", {
+      input: {
+        prompt: enhancedPrompt,
+        image_url: uploadedUrl,
       },
-      body: JSON.stringify(payload),
     });
 
-    if (!submitRes.ok) {
-      const err = await submitRes.text();
-      console.error("Fal Queue Submit Error:", err);
-      throw new Error("Failed to submit video job: " + err);
-    }
-
-    const queueData = await submitRes.json();
-    return { request_id: queueData.request_id };
+    return { request_id };
   },
 
   // VIDEO: Check the status of a submitted video job
   async checkVideoStatus(requestId) {
-    const apiKey = process.env.FAL_KEY;
-    if (!apiKey) throw new Error("FAL_KEY is missing");
-    const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
     const endpoint = "fal-ai/minimax/video-01/image-to-video";
 
-    // Check the queue status
-    const statusRes = await fetch(
-      `https://queue.fal.run/${endpoint}/requests/${requestId}/status`,
-      { headers: { "Authorization": authHeader } }
-    );
+    try {
+      const statusResult = await fal.queue.status(endpoint, {
+        requestId: requestId,
+        logs: false,
+      });
 
-    if (!statusRes.ok) {
-      return { status: "IN_QUEUE" };
+      if (statusResult.status === "COMPLETED") {
+        // Fetch the actual result
+        const result = await fal.queue.result(endpoint, { requestId });
+        return {
+          status: "COMPLETED",
+          url: result.data?.video?.url || result.data?.video_url,
+        };
+      }
+
+      if (statusResult.status === "FAILED") {
+        return { status: "FAILED" };
+      }
+
+      return { status: statusResult.status || "IN_PROGRESS" };
+    } catch (err) {
+      console.error("Status check error:", err.message);
+      return { status: "IN_PROGRESS" };
     }
-
-    const statusData = await statusRes.json();
-
-    if (statusData.status === "COMPLETED") {
-      // Fetch the actual result
-      const resultRes = await fetch(
-        `https://queue.fal.run/${endpoint}/requests/${requestId}`,
-        { headers: { "Authorization": authHeader } }
-      );
-      if (!resultRes.ok) throw new Error("Failed to fetch video result");
-      const result = await resultRes.json();
-      return {
-        status: "COMPLETED",
-        url: result.video?.url || result.video_url,
-      };
-    }
-
-    if (statusData.status === "FAILED") {
-      return { status: "FAILED" };
-    }
-
-    return { status: statusData.status || "IN_PROGRESS" };
   },
 
   // TEXT SERVICES: OpenAI
