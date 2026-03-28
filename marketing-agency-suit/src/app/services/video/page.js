@@ -105,7 +105,6 @@ export default function VideoService() {
       const base64 = imagePreview.split(",")[1];
 
       const data = {
-        projectId: activeProject?.id,
         imageBase64: base64,
         imageMimeType: uploadedImage.type,
         style: selectedStyle,
@@ -114,20 +113,47 @@ export default function VideoService() {
         creativePrompt: creativePrompt,
       };
 
-      const res = await fetch("/api/generate/video", {
+      // Step 1: Submit the job (returns instantly with request_id)
+      const submitRes = await fetch("/api/generate/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const json = await res.json();
-      if (json.success) {
-        setResult(json.data);
-      } else {
-        alert("Generation failed: " + (json.error || "Unknown error"));
+      const submitJson = await submitRes.json();
+
+      if (!submitJson.success || !submitJson.request_id) {
+        throw new Error(submitJson.error || "Failed to submit video job");
       }
+
+      // Step 2: Poll for the result every 5 seconds
+      const requestId = submitJson.request_id;
+      let videoUrl = null;
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+
+      while (!videoUrl && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 5000));
+        attempts++;
+
+        const statusRes = await fetch(`/api/generate/video/status?id=${requestId}`);
+        const statusJson = await statusRes.json();
+
+        if (statusJson.status === "COMPLETED" && statusJson.url) {
+          videoUrl = statusJson.url;
+        } else if (statusJson.status === "FAILED") {
+          throw new Error("Video generation failed on AI server");
+        }
+        // Otherwise keep polling...
+      }
+
+      if (!videoUrl) {
+        throw new Error("Video generation timed out after 5 minutes");
+      }
+
+      setResult({ output_url: videoUrl });
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
+      alert("Generation failed: " + err.message);
     } finally {
       clearInterval(stageInterval);
       setLoading(false);
