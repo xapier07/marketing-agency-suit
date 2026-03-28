@@ -140,16 +140,16 @@ async function fetchFalQueue(endpoint, bodyData) {
 }
 
 export const antigravity = {
-  // IMAGE: Fal.ai Bria Product Shot - TRUE Image-to-Image Product Photography
+  // IMAGE: Ideogram V3 Replace-Background — Best text/label preservation in the industry
   async generateImage(params) {
-    // Build scene description based on selected visual style
+    // $1M PRODUCTION PROMPTS — every scene protects product details, name, text, labels
     const styleScenes = {
-      studio: "Ultra-clean minimalist studio. White seamless background. Professional three-point lighting with soft shadows. Subtle gradient reflection on polished surface. Commercial product photography.",
-      lifestyle: "Natural lifestyle setting. Warm golden-hour sunlight streaming through a window. Product placed on a textured wooden surface with linen fabric. Soft bokeh greenery in background.",
-      "3d_render": "Floating on a glossy black reflective surface. Dramatic rim lighting with purple and blue gradient background. Soft ambient occlusion shadows. High-end 3D render look.",
-      luxury: "Placed on elegant dark marble surface. Gold and champagne accent lighting. Crystal-clear reflections. Rich velvet fabric draped nearby. Magazine editorial luxury aesthetic.",
-      outdoor: "Stunning tropical beach setting. Warm golden sunlight with natural cast shadows. Turquoise ocean in the soft-focus background. Product sitting on a smooth rock near the shore.",
-      neon: "Dark moody setting with vibrant neon lighting in pink, blue, and purple. Glowing reflections on glossy surface. Cyberpunk futuristic tech aesthetic. Dramatic color contrast.",
+      studio: "Professional e-commerce product photography studio. Solid pure white seamless background. The product sits perfectly centered on a clean white surface. Soft diffused three-point studio lighting eliminates harsh shadows. A subtle soft reflection appears on the surface below. Even, balanced illumination ensures every label, text, and detail on the product is perfectly sharp, crisp, and fully readable. Magazine-quality commercial product photo. Shot on Phase One IQ4 150MP. 8K resolution.",
+      lifestyle: "The product sits naturally on a beautiful textured light oak wood table near a large window. Warm morning golden-hour sunlight streams in from the left, creating soft warm shadows. A small potted eucalyptus plant sits slightly out of focus in the background. Neutral linen fabric is casually draped nearby. All product text, labels, and branding remain perfectly sharp and readable. Aspirational lifestyle editorial photography. Shot on Canon EOS R5.",
+      "3d_render": "The product floats centered above a perfectly reflective obsidian black surface. Deep navy blue gradient background transitioning to black. Precise rim lighting in cool electric blue outlines the product edges. Subtle ambient occlusion grounds the product. A faint purple accent light adds depth from behind. All product labels, text, and branding details remain razor-sharp and fully legible. Ultra-premium 3D product visualization. Cinema 4D and Octane render quality.",
+      luxury: "The product sits elegantly on a polished dark Emperador marble surface with gold veining. A soft champagne-gold key light from above creates refined highlights. Dark moody background with rich burgundy velvet fabric draped artfully to one side. Subtle crystal light refractions add sophistication. All product text, labels, and branding are perfectly preserved and readable. Luxury fashion house product campaign. Vogue editorial quality.",
+      outdoor: "The product sits on a smooth flat stone near a pristine beach shore. Crystal-clear turquoise water is beautifully blurred in the background. Warm golden sunset light wraps around the product from behind, creating a natural rim light. Soft ocean breeze feel. Clean natural sand texture nearby. All product labels, text, and details remain crisp and readable. Premium travel lifestyle brand photography. Shot on Hasselblad X2D.",
+      neon: "The product centered on a glossy jet-black surface in a dark environment. Dramatic neon lighting: vivid magenta from the left and electric cyan from the right, creating striking color-split illumination on the product. Subtle neon reflections shimmer on the surface below. Dark atmospheric background with faint purple haze. All product text, branding, and labels remain perfectly sharp and readable. Cyberpunk premium brand aesthetic. High-end tech product launch photography.",
     };
 
     const scenePrompt = styleScenes[params.style] || styleScenes.studio;
@@ -158,24 +158,29 @@ export const antigravity = {
       fullPrompt += ` ${params.additional_context}.`;
     }
 
-    // Generate multiple variations by calling the API multiple times if needed
+    // Upload image to Fal CDN first for reliable processing
+    const imageBuffer = Buffer.from(params.imageBase64, "base64");
+    const imageBlob = new Blob([imageBuffer], { type: params.imageMimeType || "image/png" });
+    const imageFile = new File([imageBlob], "product.png", { type: params.imageMimeType || "image/png" });
+    const uploadedUrl = await fal.storage.upload(imageFile);
+
+    // Generate with Ideogram V3 — best at preserving product text and labels
     const numImages = params.num_images || 1;
+    const result = await fal.run("fal-ai/ideogram/v3/replace-background", {
+      input: {
+        image_url: uploadedUrl,
+        prompt: fullPrompt,
+        num_images: numImages,
+        rendering_speed: "QUALITY",
+      },
+    });
+
+    // Extract image URLs from result
     const imageUrls = [];
-
-    for (let i = 0; i < numImages; i++) {
-      const payload = {
-        image_url: `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`,
-        scene_description: fullPrompt,
-        optimize_description: true,
-      };
-
-      const falResult = await fetchFal("fal-ai/bria/product-shot", payload);
-      
-      if (falResult.image?.url) {
-        imageUrls.push(falResult.image.url);
-      } else if (falResult.images?.[0]?.url) {
-        imageUrls.push(falResult.images[0].url);
-      }
+    if (result.data?.images) {
+      result.data.images.forEach((img) => imageUrls.push(img.url));
+    } else if (result.data?.image?.url) {
+      imageUrls.push(result.data.image.url);
     }
 
     return {
@@ -185,65 +190,44 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Peak-quality pipeline — Auto-enhance image → Kling Pro animation
+  // VIDEO: Veo 3.1 Fast — Google's latest image-to-video model
   async submitVideo(params) {
-    // PEAK-LEVEL style prompts with hyper-specific camera motion & lighting
+    // $1M PRODUCTION PROMPTS — protect product, subtle motion, cinematic quality
+    // Rule: Product stays SHARP. Camera does the work. Less is more.
     const stylePrompts = {
-      cinematic: "The camera starts with a wide establishing shot of the product centered on a reflective dark surface. It slowly pushes in with a smooth dolly movement while orbiting 45 degrees to the right. Studio key light gradually intensifies from the left side creating dramatic shadows. Subtle volumetric fog drifts through the scene. Lens flare appears as the camera reaches a medium close-up. Depth of field shifts to isolate the product. Professional commercial cinematography. 4K film grain.",
-      ugc: "Handheld camera movement, slightly shaky like a real person filming on their phone. The camera approaches the product from above at a casual angle, moves down to eye level, then slowly circles it. Natural window light creates soft shadows. The product catches light as the camera moves. Authentic TikTok creator aesthetic. Warm color temperature. Casual but engaging.",
-      social_ad: "Fast energetic camera movement. Quick zoom-in from wide to extreme close-up of the product. Dynamic lighting pulses between warm and cool tones. The product rotates smoothly on a turntable. Quick cut angles showing the product from multiple dramatic perspectives. Bold rim lighting creates a glowing outline. High contrast. Social media ad energy. Eye-catching motion.",
-      lifestyle: "Ultra slow motion footage at 120fps. The product sits in a beautiful golden-hour lit scene. Camera glides smoothly from left to right in a slow tracking shot. Soft wind causes subtle movement in the background. Warm sunlight creates long cinematic shadows. Particles of dust float through light beams. Dreamy shallow depth of field. Premium brand aesthetic. Aspirational lifestyle commercial.",
-      product_demo: "Extreme macro close-up shot starting on a product detail. The camera slowly pulls back revealing the full product with smooth mechanical precision. It then rotates 180 degrees showing every angle and texture. Clean white studio background. Even, shadowless lighting that highlights surface materials and textures. Technical precision camera path. Product showcase perfection.",
+      cinematic: "The product remains perfectly still, sharp, and centered in frame with all labels and text fully readable. Camera performs a very slow, smooth dolly push-in from a medium shot to a close-up over the full duration. Subtle studio lighting gradually shifts from cool to warm. A faint reflection shimmers on the surface beneath the product. Extremely shallow depth of field keeps the product razor-sharp while the background gently blurs. No morphing, no distortion. Professional TV commercial quality. Photorealistic.",
+      ugc: "The product stays perfectly still on a clean surface with all details and text readable. Camera has subtle natural handheld micro-movements as if filmed on a phone at close range. Warm natural window light casts a soft shadow that shifts slightly. The perspective slowly changes from straight-on to a gentle 15-degree angle. Authentic, unfiltered, real feel. No dramatic effects. The product is the star. TikTok product review aesthetic.",
+      social_ad: "The product remains centered and perfectly sharp with all labels readable. Camera starts tight on the product and smoothly zooms out to reveal a clean styled surface. A subtle light sweep moves across the product from left to right, creating a premium highlight gleam on the packaging. Minimal motion, maximum impact. Clean, bold, scroll-stopping. High contrast. Social media ad with premium brand energy. Product details must stay crisp.",
+      lifestyle: "The product sits perfectly still in a beautiful natural setting. All product text and labels remain sharp and readable. Camera performs a very slow lateral tracking movement from left to right. Golden hour warm sunlight gently shifts across the scene. Subtle atmospheric depth in the background. Soft natural bokeh. The product catches a warm highlight. Aspirational, premium, editorial quality. Photorealistic lifestyle commercial.",
+      product_demo: "Extreme close-up of the product filling the frame. All text, labels, and details are perfectly sharp and readable throughout. Camera performs a very slow, controlled pull-back revealing the full product on a clean white surface. Lighting is even and professional with soft shadows. No dramatic effects. The focus is purely on showcasing the product details, materials, and craftsmanship. Technical product photography in motion. Clean, precise, premium.",
     };
 
     const basePrompt = stylePrompts[params.style] || stylePrompts.cinematic;
-    let enhancedPrompt = `${basePrompt}`;
+    let finalPrompt = basePrompt;
     if (params.creative_prompt) {
-      enhancedPrompt += ` ${params.creative_prompt}.`;
+      finalPrompt += ` ${params.creative_prompt}.`;
     }
 
-    // Step 1: Upload the raw image to Fal CDN
+    // Step 1: Upload raw product image to Fal CDN (preserves original quality)
     const imageBuffer = Buffer.from(params.imageBase64, "base64");
     const imageBlob = new Blob([imageBuffer], { type: params.imageMimeType || "image/png" });
     const imageFile = new File([imageBlob], "product.png", { type: params.imageMimeType || "image/png" });
     const uploadedUrl = await fal.storage.upload(imageFile);
 
-    // Step 2: Auto-enhance — Run through Bria to get a clean studio shot
-    let enhancedImageUrl = uploadedUrl;
-    try {
-      const briaResult = await fal.run("fal-ai/bria/product-shot", {
-        input: {
-          image_url: uploadedUrl,
-          scene_description: "Ultra-clean professional studio. Solid neutral background. Perfect three-point lighting with soft diffused shadows. High-end commercial product photography.",
-          optimize_description: true,
-        },
-      });
-      if (briaResult.data?.image?.url) {
-        enhancedImageUrl = briaResult.data.image.url;
-      } else if (briaResult.data?.images?.[0]?.url) {
-        enhancedImageUrl = briaResult.data.images[0].url;
-      }
-    } catch (e) {
-      console.log("Bria enhance skipped, using original image:", e.message);
-      // Continue with the original uploaded image
-    }
-
-    // Step 3: Submit to Kling Standard via queue (best quality that actually finishes)
-    const { request_id } = await fal.queue.submit("fal-ai/kling-video/v1/standard/image-to-video", {
+    // Step 2: Submit to Veo 3.1 Fast (Google's best — 4K cinematic realism)
+    const { request_id } = await fal.queue.submit("fal-ai/veo3.1/fast/image-to-video", {
       input: {
-        prompt: enhancedPrompt,
-        image_url: enhancedImageUrl,
-        duration: params.duration || "5",
-        aspect_ratio: params.aspect_ratio || "9:16",
+        prompt: finalPrompt,
+        image_url: uploadedUrl,
       },
     });
 
     return { request_id };
   },
 
-  // VIDEO: Check the status of a submitted video job
+  // VIDEO: Check Veo 3.1 job status
   async checkVideoStatus(requestId) {
-    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
+    const endpoint = "fal-ai/veo3.1/fast/image-to-video";
 
     try {
       const statusResult = await fal.queue.status(endpoint, {
