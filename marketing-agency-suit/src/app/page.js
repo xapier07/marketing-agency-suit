@@ -17,7 +17,7 @@ export default function Home() {
         className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-400 text-sm font-medium mb-8"
       >
         <Sparkles className="w-4 h-4" />
-        <span>Phase 1 Demo Now Live</span>
+        <span>Final Boss Level Now Live</span>
       </motion.div>
 
       <motion.h1 
@@ -68,9 +68,9 @@ export default function Home() {
         className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 w-full max-w-5xl"
       >
         {[
-          { icon: Layers, title: "6 AI Services", desc: "Images, Videos, Copy, Blogs, and more in one place." },
+          { icon: Layers, title: "8 AI Services", desc: "Images, Videos, Copy, Blogs, Social, Emails, and more." },
           { icon: Zap, title: "Lightning Fast", desc: "Async webhooks and powerful servers for quick generations." },
-          { icon: Sparkles, title: "Ready for Phase 2", desc: "Built to scale with multi-tenant SaaS features coming soon." }
+          { icon: Sparkles, title: "Ready for Scale", desc: "Built to scale with multi-tenant SaaS features coming soon." }
         ].map((feature, i) => (
           <div key={i} className="glass-card p-6 rounded-2xl flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-full bg-brand-500/20 flex items-center justify-center text-brand-400 mb-4">
