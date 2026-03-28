@@ -180,8 +180,12 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Fal.ai Kling Pro - Image-to-Video Pipeline (Queue-based)
-  async generateVideo(params) {
+  // VIDEO: Submit job to Fal queue (returns instantly with request_id)
+  async submitVideo(params) {
+    const apiKey = process.env.FAL_KEY;
+    if (!apiKey) throw new Error("FAL_KEY is missing");
+    const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
+
     // Build cinematic prompt based on selected video style
     const stylePrompts = {
       cinematic: "Dramatic cinematic product reveal. Camera slowly orbits 360 degrees around the product. Dramatic studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field with beautiful bokeh. Film grain. Professional commercial quality.",
@@ -198,16 +202,9 @@ export const antigravity = {
     }
     enhancedPrompt += ` Smooth, stable, professional camera movement. High production value. 4K cinematic quality.`;
 
-    // Step 1: Upload image to Fal storage to get a proper hosted URL
-    let imageUrl;
-    try {
-      imageUrl = await uploadToFalStorage(params.imageBase64, params.imageMimeType);
-    } catch (e) {
-      // Fallback to data URI if storage upload fails
-      imageUrl = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
-    }
+    // Build the image URL (data URI for now)
+    const imageUrl = `data:${params.imageMimeType || "image/png"};base64,${params.imageBase64}`;
 
-    // Step 2: Submit to Kling Pro via queue for reliable long-running generation
     const payload = {
       prompt: enhancedPrompt,
       image_url: imageUrl,
@@ -215,12 +212,65 @@ export const antigravity = {
       aspect_ratio: params.aspect_ratio || "9:16",
     };
 
-    const falResult = await fetchFalQueue("fal-ai/kling-video/v1/standard/image-to-video", payload);
+    // Submit to the Fal queue (this returns instantly)
+    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
+    const submitRes = await fetch(`https://queue.fal.run/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+      },
+      body: JSON.stringify(payload),
+    });
 
-    return {
-      success: true,
-      url: falResult.video?.url || falResult.video_url,
-    };
+    if (!submitRes.ok) {
+      const err = await submitRes.text();
+      console.error("Fal Queue Submit Error:", err);
+      throw new Error("Failed to submit video job: " + err);
+    }
+
+    const { request_id } = await submitRes.json();
+    return { request_id, endpoint };
+  },
+
+  // VIDEO: Check the status of a submitted video job
+  async checkVideoStatus(requestId) {
+    const apiKey = process.env.FAL_KEY;
+    if (!apiKey) throw new Error("FAL_KEY is missing");
+    const authHeader = `Key ${apiKey.replace(/\"/g, "").trim()}`;
+    const endpoint = "fal-ai/kling-video/v1/standard/image-to-video";
+
+    // Check the queue status
+    const statusRes = await fetch(
+      `https://queue.fal.run/${endpoint}/requests/${requestId}/status`,
+      { headers: { "Authorization": authHeader } }
+    );
+
+    if (!statusRes.ok) {
+      return { status: "IN_QUEUE" };
+    }
+
+    const statusData = await statusRes.json();
+
+    if (statusData.status === "COMPLETED") {
+      // Fetch the actual result
+      const resultRes = await fetch(
+        `https://queue.fal.run/${endpoint}/requests/${requestId}`,
+        { headers: { "Authorization": authHeader } }
+      );
+      if (!resultRes.ok) throw new Error("Failed to fetch video result");
+      const result = await resultRes.json();
+      return {
+        status: "COMPLETED",
+        url: result.video?.url || result.video_url,
+      };
+    }
+
+    if (statusData.status === "FAILED") {
+      return { status: "FAILED" };
+    }
+
+    return { status: statusData.status || "IN_PROGRESS" };
   },
 
   // TEXT SERVICES: OpenAI
