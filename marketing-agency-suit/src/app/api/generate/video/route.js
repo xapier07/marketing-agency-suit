@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { antigravity } from "@/lib/antigravity";
-import { db } from "@/lib/db";
 
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { projectId, imageBase64, imageMimeType, style, aspectRatio, duration, creativePrompt } = body;
+    const { imageBase64, imageMimeType, style, aspectRatio, duration, creativePrompt } = body;
 
-    // Call the AI video generator with uploaded image
-    const aiResult = await antigravity.generateVideo({
+    // Submit the video job to Fal queue (returns instantly with request_id)
+    const result = await antigravity.submitVideo({
       imageBase64,
       imageMimeType,
       style,
@@ -17,25 +16,12 @@ export async function POST(req) {
       creative_prompt: creativePrompt,
     });
 
-    // Store in our mock db
-    const record = await db.generations.insert({
-      project_id: projectId,
-      service: "video",
-      input_data: { style, aspectRatio, duration, creativePrompt },
-      output_url: aiResult.url,
-      style: style,
-      status: "completed",
-    });
-
-    return NextResponse.json({ success: true, data: record });
+    return NextResponse.json({ success: true, request_id: result.request_id });
   } catch (error) {
-    console.error("Video gen error:", error.message);
+    console.error("Video submit error:", error.message);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to generate video" },
+      { success: false, error: error.message || "Failed to submit video job" },
       { status: 500 }
     );
   }
 }
-
-// Increase the max duration for this serverless function (Vercel Pro allows up to 300s)
-export const maxDuration = 300;
