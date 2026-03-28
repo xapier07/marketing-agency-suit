@@ -254,27 +254,132 @@ export const antigravity = {
     }
   },
 
-  // TEXT SERVICES: OpenAI
+  // TEXT SERVICES: Elite-Level Marketing (OpenAI)
+  
+  // 1. PERFORMANCE AD COPY (AIDA & PAS Frameworks)
   async generateCopy(params) {
-    const prompt = `Write high-converting, punchy performance marketing ad copy (with hooks and headlines) for a product named "${params.product_name}" in the "${params.category}" category. The target audience is: ${params.audience}. Include emojis.`;
+    const prompt = `Act as an elite, $1,000/hr Direct Response Copywriter. 
+Write high-converting performance marketing ad copy for a product named "${params.product_name}" in the "${params.category}" category. The target audience is: ${params.audience}.
+
+Provide 2 distinct ad variations formatted specifically for Facebook/Instagram ads:
+
+**Variation 1: The AIDA Framework (Attention, Interest, Desire, Action)**
+- Start with a scroll-stopping, polarizing, or highly curious hook.
+- Keep sentences short and punchy. Use line breaks.
+- Translate features into emotional benefits.
+- End with a strong, urgent Call-to-Action (CTA).
+
+**Variation 2: The PAS Framework (Problem, Agitate, Solve)**
+- Call out a specific, painful problem the audience faces.
+- Twist the knife (agitate) by explaining how frustrating it is.
+- Reveal the product as the ultimate effortless solution. 
+- Include a risk-reversal (guarantee) in the CTA.
+
+Use emojis strategically, but don't overdo it. Make it sound native to the platform, not like a corporate brochure.`;
     const text = await fetchOpenAI([{ role: "user", content: prompt }]);
     return { success: true, text };
   },
 
+  // 2. SEO & BLOG ENGINE (Google E-E-A-T Optimization)
   async generateSEO(params) {
-    const prompt = `Write a comprehensive, SEO-optimized blog article about "${params.product_name}". Incorporate these keywords naturally: ${params.keywords}. Structure with H1, H2s, bullet points, and a strong conclusion.`;
+    const prompt = `Act as a top-tier Technical SEO Strategist and Content Editor.
+Write a comprehensive, SEO-optimized blog article about "${params.product_name}". 
+Primary and semantic keywords to incorporate naturally (do not stuff): ${params.keywords}.
+
+Follow this exact structure:
+1. **Title Tag & Meta Description:** Provide a highly engaging title (under 60 chars) and meta description (under 155 chars) optimized for CTR.
+2. **The Hook:** Start with a strong introduction that immediately answers the search intent to reduce bounce rate.
+3. **Core Content (H2 & H3):** Break down the topic into logical sections using H2 and H3 tags. Use short paragraphs (max 3 sentences) for mobile readability.
+4. **Bullet Points & Skimmability:** Include at least one bulleted list and bold important concepts.
+5. **FAQ Section:** Generate 3 frequently asked questions with concise answers suitable for Google Featured Snippets.
+6. **Conclusion & CTA:** Summarize the value and end with a clear Call-to-Action.
+
+Write with high E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness). The tone should be authoritative but accessible.`;
     const text = await fetchOpenAI([{ role: "user", content: prompt }]);
     return { success: true, text };
   },
 
+  // 3. PRODUCT DESCRIPTION (Sensory & Conversion Copywriting)
   async generateDescription(params) {
-    const prompt = `Write a compelling e-commerce product description for "${params.product_name}". The features are: ${params.features}. Organize it with an attention-grabbing overview paragraph, followed by a bulleted list of 5 key benefits, and ending with a call to action.`;
+    const prompt = `Act as an elite E-commerce Copywriter for a premium brand.
+Write a world-class product description for "${params.product_name}". 
+Core features to include: ${params.features}.
+
+Do not just list features. You must use "Sensory Copywriting" — translate every logical feature into an emotional, lifestyle benefit.
+
+Structure the output as follows:
+1. **The Hook (1 sentence):** A bold, evocative opening statement that captures the core transformation.
+2. **The Story (1 short paragraph):** Paint a picture of the customer's life using the product. Make it aspirational.
+3. **The 'Why You Need It' List:** A bulleted list of the top 4-5 benefits. Format each as "**Benefit:** Brief explanation."
+4. **The Details:** A brief, scannable list of specs or materials.
+5. **The Closer:** A final sentence creating urgency or confidence, followed by a strong CTA (e.g., "Add to Cart before it's gone").
+
+Make it sound premium, sophisticated, and irresistible.`;
     const text = await fetchOpenAI([{ role: "user", content: prompt }]);
     return { success: true, text };
   },
 
+  // 4. UGC SCRIPT GENERATOR (TikTok/Reels Viral Architecture)
   async generateScript(params) {
-    const prompt = `Write a 30-to-60-second UGC (User Generated Content) video script for a product named "${params.product_name}". The tone/style should be: ${params.style}. Include timestamps and visual directions in brackets (e.g., [Hold product close to camera - 0:05]), followed by the spoken dialogue. Make sure it has a strong hook in the first 3 seconds, clear visual instructions, and a compelling Call to Action at the end.`;
+    const prompt = `Act as a Viral TikTok/Reels Content Strategist.
+Write a 30-45 second native UGC (User Generated Content) video script for "${params.product_name}". 
+The intended tone/style is: ${params.style}.
+
+Use the "Viral Video Architecture" designed for maximum Average Watch Time (AWT):
+1. **The 3-Second Hook:** An absolute pattern-interrupt that stops the scroll immediately (e.g., "Stop doing X", "I finally found the secret to Y"). 
+2. **The Setup / Problem:** Build quick tension or relate to a common frustration.
+3. **The Reveal / Solution:** Introduce the product organically, showing it in action.
+4. **The Proof:** State one massive benefit or social proof.
+5. **The CTA:** Clear, frictionless instruction on what to do next.
+
+**Formatting rules:**
+- Include precise [Visual & Text-On-Screen (TOS)] instructions in brackets before the spoken dialogue.
+- Make the dialogue sound 100% natural and conversational, NOT like a commercial. Use internet slang where appropriate for the tone.
+- Add estimated timestamps.`;
+    const text = await fetchOpenAI([{ role: "user", content: prompt }]);
+    return { success: true, text };
+  },
+
+  // 5. SOCIAL MEDIA CAMPAIGN (LinkedIn / Twitter Threads) (NEW BOSS LEVEL)
+  async generateSocial(params) {
+    const prompt = `Act as a Top 1% Social Media Ghostwriter.
+Create a high-engagement social media campaign for "${params.product_name}". The target audience is ${params.audience || "professionals and consumers"}.
+
+Provide 2 distinct posts:
+
+**Post 1: The Viral LinkedIn/Twitter Thread (Story-Driven)**
+- Start with a contrarian or highly valuable Hook (1 sentence).
+- Follow with a personal or industry story that leads to a sudden realization.
+- Share 3 bulleted insights or framework steps centered around the product's solution.
+- End with a question to drive comments and algorithm engagement.
+- Include appropriate hashtag strategy.
+
+**Post 2: The Instagram/Visual Platform Post (Aesthetic & Vibe)**
+- Start with an aesthetic, lifestyle-focused hook phrase.
+- Write a short, punchy caption focused on "the vibe" and the transformation.
+- Include a specific Call-to-Action (e.g., "Link in bio", "Save this for later").
+- Include a curated list of 10 highly relevant hashtags.`;
+    const text = await fetchOpenAI([{ role: "user", content: prompt }]);
+    return { success: true, text };
+  },
+
+  // 6. EMAIL MARKETING SEQUENCE (List Monetization) (NEW BOSS LEVEL)
+  async generateEmail(params) {
+    const prompt = `Act as an elite Email Marketer and Klaviyo Expert.
+Write a highly-converting 3-part Email Drip Sequence for "${params.product_name}". 
+
+For EACH of the 3 emails, provide:
+- **Subject Line:** Must be curiosity-inducing, short (under 40 chars), and avoid spam triggers. (Provide 2 options per email).
+- **Preview Text:** A strong secondary hook that appears next to the subject line.
+- **Body Copy:** Keep paragraphs to 1-2 sentences. Use personalization tags like [First Name]. 
+- **CTA:** One single, clear button/link focus.
+
+**The Sequence Structure:**
+- **Email 1: The Welcome / The Big Idea** (Sent immediately. Deliver value, introduce the brand story, and present the product natively).
+- **Email 2: The Logic / Overcoming Objections** (Sent 24hrs later. Address the #1 reason they haven't bought yet using logic or social proof).
+- **Email 3: The Urgency / The Push** (Sent 48hrs later. Introduce scarcity, a time-sensitive offer, or FOMO to close the sale).
+
+Write in a direct, conversational tone like an email from a trusted friend, not a faceless corporation.`;
     const text = await fetchOpenAI([{ role: "user", content: prompt }]);
     return { success: true, text };
   }
