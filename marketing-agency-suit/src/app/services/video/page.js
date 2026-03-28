@@ -161,6 +161,24 @@ export default function VideoService() {
     }
   };
 
+  const handleDownload = async (url) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `product_video.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download video", error);
+      window.open(url, "_blank"); // Fallback
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
@@ -465,15 +483,12 @@ export default function VideoService() {
                       className="w-full aspect-video object-contain"
                     />
                   </div>
-                  <a
-                    href={result.output_url}
-                    download
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => handleDownload(result.output_url)}
                     className="w-full py-3 bg-dark-800 hover:bg-dark-700 border border-white/10 text-white font-medium rounded-xl flex justify-center items-center gap-2 transition-colors"
                   >
                     <Download className="w-4 h-4" /> Download Video
-                  </a>
+                  </button>
                 </motion.div>
               ) : (
                 <motion.div
