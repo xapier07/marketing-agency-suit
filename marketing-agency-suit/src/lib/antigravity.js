@@ -185,15 +185,15 @@ export const antigravity = {
     };
   },
 
-  // VIDEO: Submit job using official Fal SDK (handles upload + queue properly)
+  // VIDEO: Peak-quality pipeline — Auto-enhance image → Kling Pro animation
   async submitVideo(params) {
-    // Build cinematic prompt based on selected video style
+    // PEAK-LEVEL style prompts with hyper-specific camera motion & lighting
     const stylePrompts = {
-      cinematic: "Dramatic cinematic product reveal. Camera slowly orbits around the product. Studio lighting shifts from cool blue to warm gold. Volumetric light rays. Shallow depth of field. Professional commercial quality.",
-      ugc: "Authentic UGC-style product video. Slightly handheld camera movement. Natural daylight. Product examined from multiple angles. Warm relatable feel. TikTok native aesthetic.",
-      social_ad: "High-energy social media advertisement. Dynamic camera movements. Bold dramatic lighting. Product hero shot. Fast zoom transitions. Attention-grabbing commercial.",
-      lifestyle: "Dreamy aspirational lifestyle video. Slow motion footage. Beautiful real-world setting. Golden hour sunlight. Gentle breeze. Cinematic depth of field. Premium brand aesthetic.",
-      product_demo: "Detailed product close-up showcase. Macro camera slowly revealing product details and textures. Smooth controlled camera path. Clean neutral background with professional lighting.",
+      cinematic: "The camera starts with a wide establishing shot of the product centered on a reflective dark surface. It slowly pushes in with a smooth dolly movement while orbiting 45 degrees to the right. Studio key light gradually intensifies from the left side creating dramatic shadows. Subtle volumetric fog drifts through the scene. Lens flare appears as the camera reaches a medium close-up. Depth of field shifts to isolate the product. Professional commercial cinematography. 4K film grain.",
+      ugc: "Handheld camera movement, slightly shaky like a real person filming on their phone. The camera approaches the product from above at a casual angle, moves down to eye level, then slowly circles it. Natural window light creates soft shadows. The product catches light as the camera moves. Authentic TikTok creator aesthetic. Warm color temperature. Casual but engaging.",
+      social_ad: "Fast energetic camera movement. Quick zoom-in from wide to extreme close-up of the product. Dynamic lighting pulses between warm and cool tones. The product rotates smoothly on a turntable. Quick cut angles showing the product from multiple dramatic perspectives. Bold rim lighting creates a glowing outline. High contrast. Social media ad energy. Eye-catching motion.",
+      lifestyle: "Ultra slow motion footage at 120fps. The product sits in a beautiful golden-hour lit scene. Camera glides smoothly from left to right in a slow tracking shot. Soft wind causes subtle movement in the background. Warm sunlight creates long cinematic shadows. Particles of dust float through light beams. Dreamy shallow depth of field. Premium brand aesthetic. Aspirational lifestyle commercial.",
+      product_demo: "Extreme macro close-up shot starting on a product detail. The camera slowly pulls back revealing the full product with smooth mechanical precision. It then rotates 180 degrees showing every angle and texture. Clean white studio background. Even, shadowless lighting that highlights surface materials and textures. Technical precision camera path. Product showcase perfection.",
     };
 
     const basePrompt = stylePrompts[params.style] || stylePrompts.cinematic;
@@ -201,19 +201,40 @@ export const antigravity = {
     if (params.creative_prompt) {
       enhancedPrompt += ` ${params.creative_prompt}.`;
     }
-    enhancedPrompt += ` Smooth stable camera movement. High production value.`;
 
-    // Step 1: Upload image to Fal CDN (the SDK handles this properly)
+    // Step 1: Upload the raw image to Fal CDN
     const imageBuffer = Buffer.from(params.imageBase64, "base64");
     const imageBlob = new Blob([imageBuffer], { type: params.imageMimeType || "image/png" });
     const imageFile = new File([imageBlob], "product.png", { type: params.imageMimeType || "image/png" });
     const uploadedUrl = await fal.storage.upload(imageFile);
 
-    // Step 2: Submit to Fal queue using MiniMax (returns instantly with request_id)
-    const { request_id } = await fal.queue.submit("fal-ai/minimax/video-01/image-to-video", {
+    // Step 2: Auto-enhance — Run through Bria to get a clean studio shot
+    let enhancedImageUrl = uploadedUrl;
+    try {
+      const briaResult = await fal.run("fal-ai/bria/product-shot", {
+        input: {
+          image_url: uploadedUrl,
+          scene_description: "Ultra-clean professional studio. Solid neutral background. Perfect three-point lighting with soft diffused shadows. High-end commercial product photography.",
+          optimize_description: true,
+        },
+      });
+      if (briaResult.data?.image?.url) {
+        enhancedImageUrl = briaResult.data.image.url;
+      } else if (briaResult.data?.images?.[0]?.url) {
+        enhancedImageUrl = briaResult.data.images[0].url;
+      }
+    } catch (e) {
+      console.log("Bria enhance skipped, using original image:", e.message);
+      // Continue with the original uploaded image
+    }
+
+    // Step 3: Submit to Kling Pro via queue (highest quality video model)
+    const { request_id } = await fal.queue.submit("fal-ai/kling-video/v1/pro/image-to-video", {
       input: {
         prompt: enhancedPrompt,
-        image_url: uploadedUrl,
+        image_url: enhancedImageUrl,
+        duration: params.duration || "5",
+        aspect_ratio: params.aspect_ratio || "9:16",
       },
     });
 
@@ -222,7 +243,7 @@ export const antigravity = {
 
   // VIDEO: Check the status of a submitted video job
   async checkVideoStatus(requestId) {
-    const endpoint = "fal-ai/minimax/video-01/image-to-video";
+    const endpoint = "fal-ai/kling-video/v1/pro/image-to-video";
 
     try {
       const statusResult = await fal.queue.status(endpoint, {
@@ -231,7 +252,6 @@ export const antigravity = {
       });
 
       if (statusResult.status === "COMPLETED") {
-        // Fetch the actual result
         const result = await fal.queue.result(endpoint, { requestId });
         return {
           status: "COMPLETED",
